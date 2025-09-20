@@ -1,26 +1,31 @@
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
+import '@/styles/globals.css';
+import { Analytics } from '@vercel/analytics/next';
+import type { Metadata } from 'next';
+import { Poppins } from 'next/font/google';
+
+const font = Poppins({
+	variable: '--font',
+	weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
+	style: ['normal', 'italic'],
+	subsets: ['latin'],
+});
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
-}
+	title: 'OCR',
+	description: 'OCR',
+};
 
 export default function RootLayout({
-  children,
+	children,
 }: Readonly<{
-  children: React.ReactNode
+	children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en">
+			<body className={`${font.className} `}>
+				{children}
+				<Analytics />
+			</body>
+		</html>
+	);
 }
