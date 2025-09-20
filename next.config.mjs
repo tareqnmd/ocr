@@ -19,17 +19,17 @@ const nextConfig = {
         crypto: false,
       }
     }
-    
+
     // Handle binary files for Tesseract
     config.module.rules.push({
       test: /\.(wasm|traineddata)$/,
       type: 'asset/resource',
     })
-    
+
     return config
   },
   experimental: {
-    serverComponentsExternalPackages: ['tesseract.js', 'pdf-parse'],
+    serverComponentsExternalPackages: ['tesseract.js'],
   },
   api: {
     bodyParser: {
