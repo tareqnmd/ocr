@@ -116,10 +116,9 @@ export async function POST(request: NextRequest) {
 						const images = [];
 						for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
 							const result = await convert(pageNum, { responseType: 'buffer' });
-
-							const base64Image = `data:image/png;base64,${result?.buffer.toString(
-								'base64'
-							)}`;
+							const base64Image = `data:image/png;base64,${
+								result && result.buffer ? result.buffer.toString('base64') : ''
+							}`;
 							images.push({
 								pageNumber: pageNum,
 								imageData: base64Image,
