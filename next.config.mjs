@@ -28,12 +28,10 @@ const nextConfig = {
 
     return config
   },
+  serverExternalPackages: ['tesseract.js'],
   experimental: {
-    serverComponentsExternalPackages: ['tesseract.js'],
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
+    serverActions: {
+      bodySizeLimit: '50mb',
     },
   },
 }
