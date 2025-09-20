@@ -1,3 +1,4 @@
+import { APP_DESCRIPTION, APP_NAME } from '@/constant';
 import '@/styles/globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
@@ -11,8 +12,8 @@ const font = Poppins({
 });
 
 export const metadata: Metadata = {
-	title: 'OCR',
-	description: 'OCR',
+	title: APP_NAME,
+	description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({
