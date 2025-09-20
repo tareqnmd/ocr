@@ -1,6 +1,5 @@
 import { APP_DESCRIPTION, APP_NAME } from '@/constant';
 import '@/styles/globals.css';
-import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 
@@ -23,10 +22,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
-			<body className={`${font.className} `}>
-				{children}
-				<Analytics />
-			</body>
+			<body className={`${font.className} `}>{children}</body>
 		</html>
 	);
 }
