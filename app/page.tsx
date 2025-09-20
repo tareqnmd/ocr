@@ -1,4 +1,4 @@
-import { FileUpload } from '@/components/file-upload';
+import { FileUpload } from '@/components/file-upload/file-upload';
 import { Header } from '@/components/header';
 
 export default function Home() {

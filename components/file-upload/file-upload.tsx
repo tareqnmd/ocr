@@ -1,8 +1,8 @@
 'use client';
 
-import { PDFInfoCard } from '@/components/pdf-info-card';
-import { ProcessingStatus } from '@/components/processing-status';
-import { TextResult } from '@/components/text-result';
+import { PDFInfoCard } from '@/components/file-upload/pdf-info-card';
+import { ProcessingStatus } from '@/components/file-upload/processing-status';
+import { TextResult } from '@/components/file-upload/text-result';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
