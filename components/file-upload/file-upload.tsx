@@ -136,7 +136,6 @@ export function FileUpload() {
 					try {
 						result = await response.json();
 					} catch (jsonError) {
-						console.error('[v0] Failed to parse success JSON:', jsonError);
 						throw new Error(
 							'Server returned invalid response. Please try again.'
 						);
@@ -207,7 +206,6 @@ export function FileUpload() {
 					}
 				}
 			} catch (error) {
-				console.error('[v0] File processing error:', error);
 				updateFile(uploadedFile.id, {
 					status: 'error',
 					error:
