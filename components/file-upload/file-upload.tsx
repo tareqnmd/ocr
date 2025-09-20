@@ -1,5 +1,6 @@
 'use client';
 
+import { FileItem } from '@/components/file-upload/file-item';
 import { PDFInfoCard } from '@/components/file-upload/pdf-info-card';
 import { ProcessingStatus } from '@/components/file-upload/processing-status';
 import { TextResult } from '@/components/file-upload/text-result';
@@ -7,32 +8,40 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
 	performClientOCR,
+	processBase64ImageOCR,
 	validateImageFile,
 	type OCRResult,
 } from '@/lib/client-ocr';
 import { cn } from '@/lib/utils';
-import { AlertCircle, FileText, ImageIcon, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
-interface UploadedFile {
-	file: File;
-	id: string;
-	status: 'pending' | 'processing' | 'completed' | 'error';
-	extractedText?: string;
-	error?: string;
-	pageCount?: number;
-	processingMethod?: string;
-	wordCount?: number;
-	charCount?: number;
-	confidence?: number;
-	processingTime?: number;
-	progress?: number;
-}
+import { type UploadedFile } from '../../types/types';
 
 export function FileUpload() {
 	const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
 	const [isProcessing, setIsProcessing] = useState(false);
+
+	// Helper function to update a specific file in the state
+	const updateFile = useCallback(
+		(fileId: string, updates: Partial<UploadedFile>) => {
+			setUploadedFiles((prev) =>
+				prev.map((f) => (f.id === fileId ? { ...f, ...updates } : f))
+			);
+		},
+		[]
+	);
+
+	// Helper function to calculate text statistics
+	const calculateTextStats = useCallback((text: string) => {
+		const trimmedText = text.trim();
+		return {
+			wordCount: trimmedText.split(/\s+/).filter((word) => word.length > 0)
+				.length,
+			charCount: text.length,
+		};
+	}, []);
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
 		const newFiles: UploadedFile[] = acceptedFiles.map((file) => ({
@@ -53,33 +62,13 @@ export function FileUpload() {
 		multiple: true,
 	});
 
-	const processBase64ImageOCR = async (
-		base64Data: string,
-		fileName: string,
-		onProgress?: (progress: number) => void
-	): Promise<OCRResult> => {
-		const response = await fetch(base64Data);
-		const blob = await response.blob();
-
-		return await performClientOCR(
-			new File([blob], fileName, { type: 'image/png' }),
-			onProgress
-		);
-	};
-
 	const processFiles = async () => {
 		setIsProcessing(true);
 
 		for (const uploadedFile of uploadedFiles.filter(
 			(f) => f.status === 'pending'
 		)) {
-			setUploadedFiles((prev) =>
-				prev.map((f) =>
-					f.id === uploadedFile.id
-						? { ...f, status: 'processing', progress: 0 }
-						: f
-				)
-			);
+			updateFile(uploadedFile.id, { status: 'processing', progress: 0 });
 
 			try {
 				if (uploadedFile.file.type.startsWith('image/')) {
@@ -91,37 +80,24 @@ export function FileUpload() {
 					const result: OCRResult = await performClientOCR(
 						uploadedFile.file,
 						(progress) => {
-							setUploadedFiles((prev) =>
-								prev.map((f) =>
-									f.id === uploadedFile.id
-										? { ...f, progress: Math.round(progress * 100) }
-										: f
-								)
-							);
+							updateFile(uploadedFile.id, {
+								progress: Math.round(progress * 100),
+							});
 						}
 					);
 
-					setUploadedFiles((prev) =>
-						prev.map((f) =>
-							f.id === uploadedFile.id
-								? {
-										...f,
-										status: 'completed',
-										extractedText: result.text,
-										pageCount: 1,
-										processingMethod: 'Client-side OCR',
-										wordCount: result.text
-											.trim()
-											.split(/\s+/)
-											.filter((word) => word.length > 0).length,
-										charCount: result.text.length,
-										confidence: result.confidence,
-										processingTime: result.processingTime,
-										progress: 100,
-								  }
-								: f
-						)
-					);
+					const textStats = calculateTextStats(result.text);
+					updateFile(uploadedFile.id, {
+						status: 'completed',
+						extractedText: result.text,
+						pageCount: 1,
+						processingMethod: 'Client-side OCR',
+						wordCount: textStats.wordCount,
+						charCount: textStats.charCount,
+						confidence: result.confidence,
+						processingTime: result.processingTime,
+						progress: 100,
+					});
 				} else {
 					const formData = new FormData();
 					formData.append('file', uploadedFile.file);
@@ -178,18 +154,9 @@ export function FileUpload() {
 						for (let i = 0; i < result.images.length; i++) {
 							const image = result.images[i];
 
-							setUploadedFiles((prev) =>
-								prev.map((f) =>
-									f.id === uploadedFile.id
-										? {
-												...f,
-												progress: Math.round(
-													((i + 0.5) / result.images.length) * 100
-												),
-										  }
-										: f
-								)
-							);
+							updateFile(uploadedFile.id, {
+								progress: Math.round(((i + 0.5) / result.images.length) * 100),
+							});
 
 							const ocrResult = await processBase64ImageOCR(
 								image.imageData,
@@ -197,16 +164,9 @@ export function FileUpload() {
 								(progress) => {
 									const overallProgress =
 										((i + progress) / result.images.length) * 100;
-									setUploadedFiles((prev) =>
-										prev.map((f) =>
-											f.id === uploadedFile.id
-												? {
-														...f,
-														progress: Math.round(overallProgress),
-												  }
-												: f
-										)
-									);
+									updateFile(uploadedFile.id, {
+										progress: Math.round(overallProgress),
+									});
 								}
 							);
 
@@ -222,63 +182,38 @@ export function FileUpload() {
 
 						const avgConfidence = totalConfidence / result.images.length;
 
-						setUploadedFiles((prev) =>
-							prev.map((f) =>
-								f.id === uploadedFile.id
-									? {
-											...f,
-											status: 'completed',
-											extractedText: combinedText,
-											pageCount: result.pageCount,
-											processingMethod: 'Scanned PDF OCR',
-											wordCount: combinedText
-												.trim()
-												.split(/\s+/)
-												.filter((word) => word.length > 0).length,
-											charCount: combinedText.length,
-											confidence: avgConfidence,
-											processingTime: totalProcessingTime,
-											progress: 100,
-									  }
-									: f
-							)
-						);
+						const textStats = calculateTextStats(combinedText);
+						updateFile(uploadedFile.id, {
+							status: 'completed',
+							extractedText: combinedText,
+							pageCount: result.pageCount,
+							processingMethod: 'Scanned PDF OCR',
+							wordCount: textStats.wordCount,
+							charCount: textStats.charCount,
+							confidence: avgConfidence,
+							processingTime: totalProcessingTime,
+							progress: 100,
+						});
 					} else {
-						setUploadedFiles((prev) =>
-							prev.map((f) =>
-								f.id === uploadedFile.id
-									? {
-											...f,
-											status: 'completed',
-											extractedText: result.text,
-											pageCount: result.pageCount,
-											processingMethod: result.processingMethod,
-											wordCount: result.wordCount,
-											charCount: result.charCount,
-											progress: 100,
-									  }
-									: f
-							)
-						);
+						updateFile(uploadedFile.id, {
+							status: 'completed',
+							extractedText: result.text,
+							pageCount: result.pageCount,
+							processingMethod: result.processingMethod,
+							wordCount: result.wordCount,
+							charCount: result.charCount,
+							progress: 100,
+						});
 					}
 				}
 			} catch (error) {
 				console.error('[v0] File processing error:', error);
-				setUploadedFiles((prev) =>
-					prev.map((f) =>
-						f.id === uploadedFile.id
-							? {
-									...f,
-									status: 'error',
-									error:
-										error instanceof Error
-											? error.message
-											: 'Unknown error occurred',
-									progress: 0,
-							  }
-							: f
-					)
-				);
+				updateFile(uploadedFile.id, {
+					status: 'error',
+					error:
+						error instanceof Error ? error.message : 'Unknown error occurred',
+					progress: 0,
+				});
 			}
 		}
 
@@ -291,23 +226,6 @@ export function FileUpload() {
 
 	const clearAllFiles = () => {
 		setUploadedFiles([]);
-	};
-
-	const getFileIcon = (file: File) => {
-		if (file.type === 'application/pdf') {
-			return <FileText className="w-8 h-8 text-red-500" />;
-		}
-		return <ImageIcon className="w-8 h-8 text-blue-500" />;
-	};
-
-	const formatFileSize = (bytes: number) => {
-		if (bytes === 0) return '0 Bytes';
-		const k = 1024;
-		const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return (
-			Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-		);
 	};
 
 	const completedFiles = uploadedFiles.filter((f) => f.status === 'completed');
@@ -375,72 +293,11 @@ export function FileUpload() {
 
 						<div className="space-y-3">
 							{uploadedFiles.map((uploadedFile) => (
-								<div
+								<FileItem
 									key={uploadedFile.id}
-									className="flex items-center gap-4 p-4 border border-border rounded-lg"
-								>
-									{getFileIcon(uploadedFile.file)}
-									<div className="flex-1 min-w-0">
-										<p className="font-medium text-foreground truncate">
-											{uploadedFile.file.name}
-										</p>
-										<p className="text-sm text-muted-foreground">
-											{formatFileSize(uploadedFile.file.size)}
-											{uploadedFile.pageCount && uploadedFile.pageCount > 1 && (
-												<span className="ml-2">
-													• {uploadedFile.pageCount} pages
-												</span>
-											)}
-											{uploadedFile.status === 'completed' &&
-												uploadedFile.confidence && (
-													<span className="ml-2">
-														• {Math.round(uploadedFile.confidence)}% confidence
-													</span>
-												)}
-											{uploadedFile.status === 'completed' &&
-												uploadedFile.processingTime && (
-													<span className="ml-2">
-														• {(uploadedFile.processingTime / 1000).toFixed(1)}s
-													</span>
-												)}
-										</p>
-									</div>
-									<div className="flex items-center gap-2">
-										{uploadedFile.status === 'pending' && (
-											<span className="text-sm text-muted-foreground">
-												Ready
-											</span>
-										)}
-										{uploadedFile.status === 'processing' && (
-											<div className="flex items-center gap-2">
-												<span className="text-sm text-primary">
-													Processing...
-												</span>
-												{uploadedFile.progress !== undefined && (
-													<span className="text-xs text-muted-foreground">
-														({uploadedFile.progress}%)
-													</span>
-												)}
-											</div>
-										)}
-										{uploadedFile.status === 'completed' && (
-											<span className="text-sm text-green-600">Completed</span>
-										)}
-										{uploadedFile.status === 'error' && (
-											<div className="flex items-center gap-1 text-destructive">
-												<AlertCircle className="w-4 h-4" />
-												<span className="text-sm">{uploadedFile.error}</span>
-											</div>
-										)}
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => removeFile(uploadedFile.id)}
-										>
-											Remove
-										</Button>
-									</div>
-								</div>
+									uploadedFile={uploadedFile}
+									onRemove={removeFile}
+								/>
 							))}
 						</div>
 					</CardContent>

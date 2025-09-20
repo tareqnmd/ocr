@@ -91,12 +91,26 @@ export function validateImageFile(file: File): {
 	return { valid: true };
 }
 
-function formatFileSize(bytes: number): string {
+export function formatFileSize(bytes: number): string {
 	if (bytes === 0) return '0 Bytes';
 	const k = 1024;
 	const sizes = ['Bytes', 'KB', 'MB', 'GB'];
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 	return (
 		Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+	);
+}
+
+export async function processBase64ImageOCR(
+	base64Data: string,
+	fileName: string,
+	onProgress?: (progress: number) => void
+): Promise<OCRResult> {
+	const response = await fetch(base64Data);
+	const blob = await response.blob();
+
+	return await performClientOCR(
+		new File([blob], fileName, { type: 'image/png' }),
+		onProgress
 	);
 }
