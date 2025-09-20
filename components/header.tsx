@@ -9,8 +9,8 @@ export function Header() {
             <FileText className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-card-foreground">OCR Text Extractor</h1>
-            <p className="text-sm text-muted-foreground">Professional document processing</p>
+            <h1 className="text-xl font-bold text-card-foreground">Text Extractor</h1>
+            <p className="text-sm text-muted-foreground">Document processing</p>
           </div>
         </div>
       </div>
